@@ -43,6 +43,11 @@ const YouTubeForm = () => {
       age: 0,
       dob: new Date(),
     },
+    // mode: 'onSubmit',
+    // mode: "onBlur",
+    // mode: "onTouched", // в перше спрацює на блюр, а наступні рази при onChange поля
+    // mode: "onChange", // може бути багато ререндерів, та це вплине на перформанс
+    mode: "all", // і на onBlur і на onChange
   });
 
   const {
@@ -53,12 +58,35 @@ const YouTubeForm = () => {
     watch,
     getValues,
     setValue,
+    reset,
+    trigger,
   } = form; // register -- дозволяє контролювати форму,
   // getValues -- не робить перерендери і підписки на onChange, використовуй для кнопок із onClick, для getValues не треба watch
 
   //   const { name, ref, onChange, onBlur } = register("username"); // це коментуємо а в Username пишемо {...register('username')}
 
-  const { errors } = formState;
+  const {
+    errors,
+    touchedFields,
+    dirtyFields,
+    isDirty,
+    isValid,
+    isSubmitting,
+    isSubmitted,
+    isSubmitSuccessful,
+    submitCount, //  рахує скільки разів форма була успішно відправлена
+  } = formState; // isDirty показує чи я щось міняв у полях форми,
+  //  якщо міняв то true, якщо все повернув назад то false, використовуй щоб дізейблити кнопку відправки.
+  //   console.log(touchedFields, "touchedFields");
+  //   console.log(dirtyFields, "dirtyFields");
+  //   console.log(isDirty, "isDirty");
+  //   console.log(isValid, "isValid"); // isValid -- дуже розумна штука, перевіряє чи всі всі поля валідні, якщо так то true,
+  // якщо  хоча б одне не валідне то буде false
+
+  console.log(isSubmitting, "isSubmitting");
+  console.log(isSubmitted, "isSubmitted");
+  console.log(isSubmitSuccessful, "isSubmitSuccessful");
+  console.log(submitCount, "submitCount");
 
   const { fields, append, remove } = useFieldArray({
     // useFieldArray дозволяє зробити функціонал де додаються поля при кліку на кнопку
@@ -68,6 +96,12 @@ const YouTubeForm = () => {
 
   const onSubmitMy = (data) => {
     console.log(data, "Form Submitted!");
+    // не рекомендовано використовувати  цій фн reset
+  };
+
+  const onErrorMy = (errors) => {
+    // викличеться коли форма фейланеться
+    console.log(errors, "submit errors");
   };
 
   const handleGetValues = () => {
@@ -106,13 +140,19 @@ const YouTubeForm = () => {
 
   console.log(errors, "errors");
 
+  useEffect(() => {
+    if (isSubmitSuccessful) {
+      reset(); // так треба робити, правда чогось збиваються настройки isSubmitted, isSubmitSuccessful, submitCount
+    }
+  }, [isSubmitSuccessful, reset]);
+
   return (
     <div>
       <h1>TouTube Form ({renderCount / 2})</h1>
       {/* <h2>Watched value: {watchUsername}</h2> */}
       {/* <h2>Watched value: {JSON.stringify(watchForm)}</h2> */}
       <form
-        onSubmit={handleSubmit(onSubmitMy)}
+        onSubmit={handleSubmit(onSubmitMy, onErrorMy)}
         noValidate // тепер не браузер валідує форму а useForm
       >
         <div className="form-control">
@@ -162,6 +202,14 @@ const YouTubeForm = () => {
                     "This domain is not supported"
                   );
                 },
+                emailAvailable: async (fieldValue) => {
+                  const response = await fetch(
+                    `https://jsonplaceholder.typicode.com/users?email=${fieldValue}`
+                  );
+                  const data = await response.json();
+
+                  return data.length == 0 || "Email already exist!";
+                },
               },
             })}
           />
@@ -185,12 +233,24 @@ const YouTubeForm = () => {
 
         <div className="form-control">
           <label htmlFor="twitter">Twitter</label>
-          <input type="text" id="twitter" {...register("social.twitter")} />
+          <input
+            type="text"
+            id="twitter"
+            {...register("social.twitter", {
+              disabled: true, // валідації відключаються якщо поле disabled, а його значення буде undefined
+            })}
+          />
         </div>
 
         <div className="form-control">
           <label htmlFor="facebook">Facebook</label>
-          <input type="text" id="facebook" {...register("social.facebook")} />
+          <input
+            type="text"
+            id="facebook"
+            {...register("social.facebook", {
+              disabled: watch("channel") === "", // дивиться чи не пусте поле channel, якщо пусте дізейблимо поле facebook
+            })}
+          />
         </div>
 
         <div className="form-control">
@@ -279,12 +339,28 @@ const YouTubeForm = () => {
           <p className="error">{errors.dob?.message}</p>
         </div>
 
+        {/* <button disabled={!isDirty || !isValid || isSubmitting}>Submit</button> */}
         <button>Submit</button>
         <button type="button" onClick={handleGetValues}>
           Get Values
         </button>
         <button type="button" onClick={handleSetValue}>
           Set Values
+        </button>
+        <button type="button" onClick={() => reset()}>
+          Reset
+        </button>
+        <button
+          type="button"
+          //   onClick={() => trigger() /*ровалідує всі поля при кліку на кнопку*/}
+          onClick={
+            () =>
+              trigger(
+                "channel"
+              ) /*ровалідує конкретне поле при кліку на кнопку*/
+          }
+        >
+          Validate
         </button>
       </form>
       <DevTool control={control} />
