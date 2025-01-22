@@ -51,7 +51,7 @@ const YoutubeFormWithYUP = () => {
     submitCount, //  рахує скільки разів форма була успішно відправлена
   } = formState;
 
-  const onSubmitMy = () => {
+  const onSubmitMy = (data) => {
     console.log(data, "Form Submitted!");
     // не рекомендовано використовувати  цій фн reset
   };
